@@ -5,7 +5,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 import boto3
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import random
 import string
 import io
@@ -49,8 +49,8 @@ def upload_to_s3(file: UploadFile, expiration: int) -> dict:
     # Upload file to S3
     s3_client.upload_fileobj(file.file, S3_BUCKET_NAME, file_key)
 
-    # Store metadata in the in-memory database
-    expiration_time = datetime.utcnow() + timedelta(seconds=expiration)
+    # Store metadata in the in-memory database with timezone-aware datetime
+    expiration_time = datetime.now(timezone.utc) + timedelta(seconds=expiration)
     files_db[file_id] = {
         "key": file_key,
         "filename": file.filename,
@@ -92,7 +92,7 @@ async def upload(
         s3_client.upload_fileobj(zip_buffer, S3_BUCKET_NAME, zip_file_key)
 
         # Store metadata for the ZIP file
-        expiration_time = datetime.utcnow() + timedelta(seconds=expiration)
+        expiration_time = datetime.now(timezone.utc) + timedelta(seconds=expiration)
         file_id = generate_id(prefix="ZIP-", length=6)
         files_db[file_id] = {
             "key": zip_file_key,
@@ -114,8 +114,8 @@ async def download(file_id: str):
     if not file_data:
         raise HTTPException(status_code=404, detail="File not found")
 
-    # Check if the file has expired
-    if datetime.utcnow() > file_data["expires_at"]:
+    # Check if the file has expired using timezone-aware datetime
+    if datetime.now(timezone.utc) > file_data["expires_at"]:
         # Delete the file from S3
         s3_client.delete_object(Bucket=S3_BUCKET_NAME, Key=file_data["key"])
         del files_db[file_id]
