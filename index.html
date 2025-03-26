@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SwiftShare - File & Text Sharing</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+    <div class="container">
+        <h2>SwiftShare</h2>
+        <p>Upload and share files or text easily.</p>
+
+        <div class="toggle-buttons">
+            <button id="toggleUpload" class="active" onclick="showSection('upload')">Upload</button>
+            <button id="toggleDownload" onclick="showSection('download')">Download</button>
+        </div>
+
+        <!-- Upload Section -->
+        <div id="uploadSection" class="section active">
+            <div id="dropArea">
+                <p>📤 Drag & Drop Files Here</p>
+                <input type="file" id="fileInput" multiple hidden>
+                <button onclick="document.getElementById('fileInput').click()">Or Select Files</button>
+                <div id="fileList"></div>
+            </div>
+
+            <textarea id="textInput" placeholder="Or enter text here..."></textarea>
+
+            <!-- Expiration Policy Dropdown -->
+            <label for="expirationPolicy">Choose Expiration Policy:</label>
+            <select id="expirationPolicy">
+                <option value="delete_after_first_download">Delete After First Download (5 minutes)</option>
+                <option value="store_1_hour">Store for 1 Hour</option>
+                <option value="store_1_day">Store for 1 Day</option>
+            </select>
+
+            <button onclick="uploadFiles()">Upload</button>
+            <p id="uploadResult"></p>
+        </div>
+
+        <!-- Download Section -->
+        <div id="downloadSection" class="section">
+            <input type="text" id="fileIdInput" placeholder="Enter File ID">
+            <button onclick="downloadFile()">Download</button>
+        </div>
+    </div>
+
+    <!-- Loading Screen -->
+    <div id="loadingScreen" class="loading-screen">
+        <div class="spinner"></div>
+        <p id="loadingText">Uploading... 0%</p>
+        <div class="progress-bar">
+            <div id="progress" class="progress"></div>
+        </div>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+
+</html>
