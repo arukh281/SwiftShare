@@ -158,7 +158,24 @@ async def download(file_id: str):
         file_stream = s3_response["Body"]
         file_name = file_data["filename"]
 
-        # Delete file if it's a one-time download
+        # If it's a text file, return content for preview
+        if file_name == "shared-text.txt":
+            content = file_stream.read().decode('utf-8')
+            # Delete the file as it's been accessed
+            try:
+                s3_client.delete_object(Bucket=S3_BUCKET_NAME, Key=file_data["key"])
+                del files_db[file_id]
+            except:
+                pass
+            return JSONResponse(
+                content={
+                    "type": "text",
+                    "content": content,
+                    "filename": file_name
+                }
+            )
+
+        # For non-text files, proceed with normal download
         if (file_data["expires_at"] - current_time) <= timedelta(seconds=300):
             try:
                 s3_client.delete_object(Bucket=S3_BUCKET_NAME, Key=file_data["key"])
@@ -177,7 +194,7 @@ async def download(file_id: str):
         )
 
     except Exception as e:
-        print(f"Download error: {str(e)}")  # Add server-side logging
+        print(f"Download error: {str(e)}")
         return JSONResponse(
             status_code=500,
             content={"error": "Error downloading file"},

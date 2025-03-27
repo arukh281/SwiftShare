@@ -149,6 +149,39 @@ async function uploadFiles() {
 }
 
 // ✅ Download File by ID
+let currentTextContent = null;
+let currentTextFilename = null;
+
+function showTextPreview(content) {
+  const modal = document.getElementById("textPreviewModal");
+  const previewContent = document.getElementById("textPreviewContent");
+  previewContent.innerText = content; // Using innerText instead of textContent to preserve formatting
+  modal.style.display = "block";
+  currentTextContent = content;
+}
+
+function closeTextPreview() {
+  const modal = document.getElementById("textPreviewModal");
+  modal.style.display = "none";
+  currentTextContent = null;
+  currentTextFilename = null;
+}
+
+function downloadTextFile() {
+  if (currentTextContent) {
+    const blob = new Blob([currentTextContent], { type: "text/plain" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = currentTextFilename || "shared-text.txt";
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  }
+  closeTextPreview();
+}
+
 async function downloadFile() {
   const fileId = document.getElementById("fileIdInput").value.trim();
   const downloadResult = document.getElementById("downloadResult");
@@ -159,45 +192,49 @@ async function downloadFile() {
   }
 
   try {
-    // Show loading state
     downloadResult.textContent = "Downloading...";
-
     const response = await fetch(`/download/${fileId}`);
-    const contentType = response.headers.get("content-type");
 
-    // Handle JSON responses (errors)
-    if (contentType && contentType.includes("application/json")) {
+    if (!response.ok) {
       const data = await response.json();
       downloadResult.textContent = data.error || "Error downloading file";
       return;
     }
 
-    // Handle successful file download
-    if (response.ok) {
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      const filename =
-        response.headers
-          .get("content-disposition")
-          ?.split("filename=")[1]
-          ?.replace(/"/g, "") || "downloaded-file";
+    const contentType = response.headers.get("content-type");
 
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      downloadResult.textContent = "Download successful!";
-
-      // Clear success message after 3 seconds
-      setTimeout(() => {
+    // Handle JSON response (text preview)
+    if (contentType && contentType.includes("application/json")) {
+      const data = await response.json();
+      if (data.type === "text") {
+        currentTextFilename = data.filename;
+        showTextPreview(data.content);
         downloadResult.textContent = "";
-      }, 3000);
-    } else {
-      downloadResult.textContent = "Error downloading file";
+        return;
+      }
     }
+
+    // Handle regular file download
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const filename =
+      response.headers
+        .get("content-disposition")
+        ?.split("filename=")[1]
+        ?.replace(/"/g, "") || "downloaded-file";
+
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    downloadResult.textContent = "Download successful!";
+
+    setTimeout(() => {
+      downloadResult.textContent = "";
+    }, 3000);
   } catch (error) {
     console.error("Download error:", error);
     downloadResult.textContent = "Error downloading file";
