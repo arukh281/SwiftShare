@@ -1,3 +1,20 @@
+function showLoadingScreen() {
+  document.getElementById("loadingScreen").style.display = "flex";
+  document.getElementById("loadingText").textContent = "Uploading... 0%";
+  document.getElementById("progress").style.width = "0%";
+}
+
+function hideLoadingScreen() {
+  document.getElementById("loadingScreen").style.display = "none";
+}
+
+function updateProgress(percent) {
+  document.getElementById(
+    "loadingText"
+  ).textContent = `Uploading... ${percent}%`;
+  document.getElementById("progress").style.width = `${percent}%`;
+}
+
 function showSection(section) {
   // Toggle the active class for the sections
   document
@@ -86,6 +103,8 @@ async function uploadFiles() {
   const uploadResult = document.getElementById("uploadResult");
 
   try {
+    showLoadingScreen(); // Show loading screen at start
+
     const formData = new FormData();
     formData.append("expiration_policy", expirationPolicy);
 
@@ -101,16 +120,22 @@ async function uploadFiles() {
       }
     }
 
+    updateProgress(50); // Update progress to show activity
+
     const response = await fetch("/upload/", {
       method: "POST",
       body: formData,
     });
+
+    updateProgress(90);
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
     const data = await response.json();
+    updateProgress(100);
+
     if (data.uploads && data.uploads.length > 0) {
       const fileId = data.uploads[0].file_id;
       uploadResult.textContent = `Upload successful! Your file ID is: ${fileId}`;
@@ -118,6 +143,8 @@ async function uploadFiles() {
   } catch (error) {
     uploadResult.textContent = "Error uploading: " + error.message;
     console.error("Upload error:", error);
+  } finally {
+    hideLoadingScreen(); // Hide loading screen whether successful or not
   }
 }
 
