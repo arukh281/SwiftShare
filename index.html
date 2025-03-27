@@ -54,7 +54,7 @@
 
     <!-- Loading Screen -->
     <div id="loadingScreen" class="loading-screen">
-        <div class="spinner"></div>
+        <canvas id="lottie-canvas" width="300" height="300"></canvas>
         <p id="loadingText">Uploading... 0%</p>
         <div class="progress-bar">
             <div id="progress" class="progress"></div>
@@ -74,6 +74,15 @@
     </div>
 
     <script src="/static/script.js"></script>
+    <script type="module">
+        import { DotLottie } from "https://cdn.jsdelivr.net/npm/@lottiefiles/dotlottie-web/+esm";
+        window.dotLottieInstance = new DotLottie({
+            autoplay: false,
+            loop: true,
+            canvas: document.getElementById("lottie-canvas"),
+            src: "https://lottie.host/abcbab2b-137c-4a10-9d0c-47c26f8a9b0a/tnRJwMKG2E.lottie"
+        });
+    </script>
 </body>
 
 </html>
