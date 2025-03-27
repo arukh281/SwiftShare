@@ -2,10 +2,12 @@ function showLoadingScreen() {
   document.getElementById("loadingScreen").style.display = "flex";
   document.getElementById("loadingText").textContent = "Uploading... 0%";
   document.getElementById("progress").style.width = "0%";
+  window.dotLottieInstance.play(); // Start the Lottie animation
 }
 
 function hideLoadingScreen() {
   document.getElementById("loadingScreen").style.display = "none";
+  window.dotLottieInstance.stop(); // Stop the Lottie animation
 }
 
 function updateProgress(percent) {
