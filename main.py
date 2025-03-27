@@ -121,18 +121,17 @@ async def download(file_id: str):
         del files_db[file_id]
         raise HTTPException(status_code=410, detail="File has expired")
 
-    # Fetch the file from S3
     try:
         s3_response = s3_client.get_object(Bucket=S3_BUCKET_NAME, Key=file_data["key"])
         file_stream = s3_response["Body"]
         file_name = file_data["filename"]
 
-        # If the policy is "delete_after_first_download", delete the file after fetching it
-        if file_data["expires_at"] - datetime.utcnow() <= timedelta(seconds=300):
+        # Fix: Use timezone-aware datetime comparison
+        current_time = datetime.now(timezone.utc)
+        if (file_data["expires_at"] - current_time) <= timedelta(seconds=300):
             s3_client.delete_object(Bucket=S3_BUCKET_NAME, Key=file_data["key"])
             del files_db[file_id]
 
-        # Return the file as a StreamingResponse
         return StreamingResponse(
             file_stream,
             media_type="application/octet-stream",
