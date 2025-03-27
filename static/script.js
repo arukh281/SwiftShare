@@ -82,7 +82,6 @@ fileInput.addEventListener("change", function () {
 // ✅ Upload Files + Show File IDs
 async function uploadFiles() {
   const textInput = document.getElementById("textInput").value.trim();
-  const fileInput = document.getElementById("fileInput");
   const expirationPolicy = document.getElementById("expirationPolicy").value;
   const uploadResult = document.getElementById("uploadResult");
 
@@ -90,12 +89,12 @@ async function uploadFiles() {
     const formData = new FormData();
     formData.append("expiration_policy", expirationPolicy);
 
-    // Add text content if present
     if (textInput) {
       formData.append("text_content", textInput);
     }
 
     // Add files if present
+    const fileInput = document.getElementById("fileInput");
     if (fileInput && fileInput.files.length > 0) {
       for (const file of fileInput.files) {
         formData.append("files", file);
@@ -107,13 +106,17 @@ async function uploadFiles() {
       body: formData,
     });
 
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
     const data = await response.json();
     if (data.uploads && data.uploads.length > 0) {
       const fileId = data.uploads[0].file_id;
       uploadResult.textContent = `Upload successful! Your file ID is: ${fileId}`;
     }
   } catch (error) {
-    uploadResult.textContent = "Error uploading files";
+    uploadResult.textContent = "Error uploading: " + error.message;
     console.error("Upload error:", error);
   }
 }

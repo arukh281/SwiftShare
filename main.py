@@ -61,9 +61,9 @@ def upload_to_s3(file: UploadFile, expiration: int) -> dict:
 
 @app.post("/upload/")
 async def upload(
-    files: list[UploadFile] = File(...),
+    files: list[UploadFile] = File(default=[]),  # Changed from File(...)
     expiration_policy: str = Form("delete_after_first_download"),
-    text_content: str = Form(None),  # Add text_content parameter
+    text_content: str = Form(None),
 ):
     """Handle file uploads with expiration policies."""
     uploads = []
@@ -79,12 +79,23 @@ async def upload(
     else:
         raise HTTPException(status_code=400, detail="Invalid expiration policy")
 
-    # If there's only one file and no text, handle it directly
-    if len(files) == 1 and not text_content:
+    # Case 1: Only text content
+    if text_content and (not files or (len(files) == 1 and not files[0].filename)):
+        # Create text file in memory
+        text_file = UploadFile(
+            filename="shared-text.txt",
+            file=BytesIO(text_content.encode()),
+        )
+        uploads.append(upload_to_s3(text_file, expiration))
+
+    # Case 2: Single file, no text
+    elif len(files) == 1 and files[0].filename and not text_content:
         file = files[0]
         uploads.append(upload_to_s3(file, expiration))
-    else:
-        # Create a ZIP file for multiple files or when text is present
+
+    # Case 3 & 4: Multiple files or files with text
+    elif len(files) > 0:
+        # Create a ZIP file
         zip_buffer = BytesIO()
         with zipfile.ZipFile(zip_buffer, "w") as zipf:
             # Add text content if present
@@ -93,10 +104,10 @@ async def upload(
             
             # Add all files
             for file in files:
-                file_content = await file.read()
-                zipf.writestr(file.filename, file_content)
-                # Reset file cursor for potential reuse
-                await file.seek(0)
+                if file.filename:  # Skip empty files
+                    file_content = await file.read()
+                    zipf.writestr(file.filename, file_content)
+                    await file.seek(0)
         
         zip_buffer.seek(0)
 
