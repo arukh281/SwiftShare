@@ -62,7 +62,8 @@ def upload_to_s3(file: UploadFile, expiration: int) -> dict:
 @app.post("/upload/")
 async def upload(
     files: list[UploadFile] = File(...),
-    expiration_policy: str = Form("delete_after_first_download"),  # Default policy
+    expiration_policy: str = Form("delete_after_first_download"),
+    text_content: str = Form(None),  # Add text_content parameter
 ):
     """Handle file uploads with expiration policies."""
     uploads = []
@@ -78,32 +79,40 @@ async def upload(
     else:
         raise HTTPException(status_code=400, detail="Invalid expiration policy")
 
-    # If multiple files are uploaded, create a ZIP file
-    if len(files) > 1:
+    # If there's only one file and no text, handle it directly
+    if len(files) == 1 and not text_content:
+        file = files[0]
+        uploads.append(upload_to_s3(file, expiration))
+    else:
+        # Create a ZIP file for multiple files or when text is present
         zip_buffer = BytesIO()
         with zipfile.ZipFile(zip_buffer, "w") as zipf:
+            # Add text content if present
+            if text_content:
+                zipf.writestr("shared-text.txt", text_content)
+            
+            # Add all files
             for file in files:
                 file_content = await file.read()
                 zipf.writestr(file.filename, file_content)
+                # Reset file cursor for potential reuse
+                await file.seek(0)
+        
         zip_buffer.seek(0)
 
         # Upload the ZIP file to S3
-        zip_file_key = f"uploaded_files_{generate_id()}.zip"
+        file_id = generate_id(prefix="ZIP-", length=6)
+        zip_file_key = f"{file_id}/uploaded_files.zip"
         s3_client.upload_fileobj(zip_buffer, S3_BUCKET_NAME, zip_file_key)
 
         # Store metadata for the ZIP file
         expiration_time = datetime.now(timezone.utc) + timedelta(seconds=expiration)
-        file_id = generate_id(prefix="ZIP-", length=6)
         files_db[file_id] = {
             "key": zip_file_key,
             "filename": "uploaded_files.zip",
             "expires_at": expiration_time,
         }
         uploads.append({"file_id": file_id, "message": "ZIP file uploaded successfully!"})
-    else:
-        # Upload single files directly
-        for file in files:
-            uploads.append(upload_to_s3(file, expiration))
 
     return {"uploads": uploads}
 

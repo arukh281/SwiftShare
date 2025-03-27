@@ -81,72 +81,41 @@ fileInput.addEventListener("change", function () {
 
 // ✅ Upload Files + Show File IDs
 async function uploadFiles() {
-  let files = document.getElementById("fileInput").files;
-  let textContent = document.getElementById("textInput").value;
-  let expirationPolicy = document.getElementById("expirationPolicy").value; // Get selected expiration policy
-  let formData = new FormData();
+  const textInput = document.getElementById("textInput").value.trim();
+  const fileInput = document.getElementById("fileInput");
+  const expirationPolicy = document.getElementById("expirationPolicy").value;
+  const uploadResult = document.getElementById("uploadResult");
 
-  for (let file of files) {
-    formData.append("files", file);
-  }
+  try {
+    const formData = new FormData();
+    formData.append("expiration_policy", expirationPolicy);
 
-  if (textContent) {
-    formData.append("text_content", textContent);
-  }
-
-  formData.append("expiration_policy", expirationPolicy); // Add expiration policy to the form data
-
-  // Show the loading screen
-  let loadingScreen = document.getElementById("loadingScreen");
-  let loadingText = document.getElementById("loadingText");
-  let progressBar = document.getElementById("progress");
-  loadingScreen.style.display = "flex";
-
-  // Create XMLHttpRequest to track progress
-  let xhr = new XMLHttpRequest();
-  xhr.open("POST", "/upload/", true);
-
-  // Update progress bar
-  xhr.upload.onprogress = function (event) {
-    if (event.lengthComputable) {
-      let percentComplete = Math.round((event.loaded / event.total) * 100);
-      loadingText.textContent = `Uploading... ${percentComplete}%`;
-      progressBar.style.width = `${percentComplete}%`;
+    // Add text content if present
+    if (textInput) {
+      formData.append("text_content", textInput);
     }
-  };
 
-  // Handle upload completion
-  xhr.onload = function () {
-    if (xhr.status === 200) {
-      let result = JSON.parse(xhr.responseText);
-      let uploadResult = document.getElementById("uploadResult");
-      uploadResult.innerHTML = "";
-      result.uploads.forEach((upload) => {
-        let msg = document.createElement("p");
-        msg.innerHTML = `✅ ${upload.message} - <b>ID: ${
-          upload.file_id || upload.text_id
-        }</b>`;
-        uploadResult.appendChild(msg);
-      });
-    } else {
-      alert("An error occurred during the upload.");
+    // Add files if present
+    if (fileInput && fileInput.files.length > 0) {
+      for (const file of fileInput.files) {
+        formData.append("files", file);
+      }
     }
-    // Hide the loading screen
-    loadingScreen.style.display = "none";
-    progressBar.style.width = "0%";
-    loadingText.textContent = "Uploading... 0%";
-  };
 
-  // Handle errors
-  xhr.onerror = function () {
-    alert("An error occurred during the upload.");
-    loadingScreen.style.display = "none";
-    progressBar.style.width = "0%";
-    loadingText.textContent = "Uploading... 0%";
-  };
+    const response = await fetch("/upload/", {
+      method: "POST",
+      body: formData,
+    });
 
-  // Send the form data
-  xhr.send(formData);
+    const data = await response.json();
+    if (data.uploads && data.uploads.length > 0) {
+      const fileId = data.uploads[0].file_id;
+      uploadResult.textContent = `Upload successful! Your file ID is: ${fileId}`;
+    }
+  } catch (error) {
+    uploadResult.textContent = "Error uploading files";
+    console.error("Upload error:", error);
+  }
 }
 
 // ✅ Download File by ID

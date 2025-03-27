@@ -265,7 +265,8 @@ select option {
 }
 
 .error-message {
-    color: #ff4444;
+    font: italic;
+    color: #f58888;
     margin-top: 10px;
     padding: 8px;
     border-radius: 4px;
@@ -288,4 +289,24 @@ select option {
 #downloadResult {
     margin-top: 10px;
     min-height: 20px;
+}
+
+#textInput {
+    width: 90%;
+    min-height: 100px;
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 2px solid #002038;
+    border-radius: 4px;
+    resize: vertical;
+    font-family: inherit;
+}
+
+#textInput:focus {
+    outline: none;
+    border-color: #007bff;
+}
+
+#textInput::placeholder {
+    color: #999;
 }
