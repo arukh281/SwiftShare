@@ -110,35 +110,59 @@ async def upload(
 @app.get("/download/{file_id}")
 async def download(file_id: str):
     """Return the file directly instead of a pre-signed URL."""
-    file_data = files_db.get(file_id)
-    if not file_data:
-        raise HTTPException(status_code=404, detail="File not found")
-
-    # Check if the file has expired using timezone-aware datetime
-    if datetime.now(timezone.utc) > file_data["expires_at"]:
-        # Delete the file from S3
-        s3_client.delete_object(Bucket=S3_BUCKET_NAME, Key=file_data["key"])
-        del files_db[file_id]
-        raise HTTPException(status_code=410, detail="File has expired")
-
     try:
+        file_data = files_db.get(file_id)
+        if not file_data:
+            return JSONResponse(
+                status_code=404,
+                content={"error": "File not found"},
+                headers={"Content-Type": "application/json"}
+            )
+
+        # Check if the file has expired
+        current_time = datetime.now(timezone.utc)
+        if current_time > file_data["expires_at"]:
+            try:
+                s3_client.delete_object(Bucket=S3_BUCKET_NAME, Key=file_data["key"])
+                del files_db[file_id]
+            except:
+                pass
+            return JSONResponse(
+                status_code=410,
+                content={"error": "File has expired"},
+                headers={"Content-Type": "application/json"}
+            )
+
+        # Get file from S3
         s3_response = s3_client.get_object(Bucket=S3_BUCKET_NAME, Key=file_data["key"])
         file_stream = s3_response["Body"]
         file_name = file_data["filename"]
 
-        # Fix: Use timezone-aware datetime comparison
-        current_time = datetime.now(timezone.utc)
+        # Delete file if it's a one-time download
         if (file_data["expires_at"] - current_time) <= timedelta(seconds=300):
-            s3_client.delete_object(Bucket=S3_BUCKET_NAME, Key=file_data["key"])
-            del files_db[file_id]
+            try:
+                s3_client.delete_object(Bucket=S3_BUCKET_NAME, Key=file_data["key"])
+                del files_db[file_id]
+            except:
+                pass
 
         return StreamingResponse(
             file_stream,
             media_type="application/octet-stream",
-            headers={"Content-Disposition": f"attachment; filename={file_name}"}
+            headers={
+                "Content-Disposition": f'attachment; filename="{file_name}"',
+                "Content-Type": "application/octet-stream",
+                "Cache-Control": "no-cache"
+            }
         )
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching file: {str(e)}")
+        print(f"Download error: {str(e)}")  # Add server-side logging
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Error downloading file"},
+            headers={"Content-Type": "application/json"}
+        )
 
 @app.get("/")
 async def homepage():

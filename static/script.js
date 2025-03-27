@@ -150,8 +150,57 @@ async function uploadFiles() {
 }
 
 // ✅ Download File by ID
-function downloadFile() {
-  let fileId = document.getElementById("fileIdInput").value;
-  if (!fileId) return alert("Enter a File ID!");
-  window.location.href = "/download/" + fileId;
+async function downloadFile() {
+  const fileId = document.getElementById("fileIdInput").value.trim();
+  const downloadResult = document.getElementById("downloadResult");
+
+  if (!fileId) {
+    downloadResult.textContent = "Please enter a file ID";
+    return;
+  }
+
+  try {
+    // Show loading state
+    downloadResult.textContent = "Downloading...";
+
+    const response = await fetch(`/download/${fileId}`);
+    const contentType = response.headers.get("content-type");
+
+    // Handle JSON responses (errors)
+    if (contentType && contentType.includes("application/json")) {
+      const data = await response.json();
+      downloadResult.textContent = data.error || "Error downloading file";
+      return;
+    }
+
+    // Handle successful file download
+    if (response.ok) {
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const filename =
+        response.headers
+          .get("content-disposition")
+          ?.split("filename=")[1]
+          ?.replace(/"/g, "") || "downloaded-file";
+
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      downloadResult.textContent = "Download successful!";
+
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        downloadResult.textContent = "";
+      }, 3000);
+    } else {
+      downloadResult.textContent = "Error downloading file";
+    }
+  } catch (error) {
+    console.error("Download error:", error);
+    downloadResult.textContent = "Error downloading file";
+  }
 }

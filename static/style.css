@@ -263,3 +263,29 @@ select option {
     color: #c9d1d9;
     font-size: 1rem;
 }
+
+.error-message {
+    color: #ff4444;
+    margin-top: 10px;
+    padding: 8px;
+    border-radius: 4px;
+    background-color: #161b22;
+    text-align: center;
+}
+
+#downloadResult:not(:empty) {
+    margin-top: 10px;
+    padding: 8px;
+    border-radius: 4px;
+    text-align: center;
+}
+
+#downloadResult:not(.error-message) {
+    color: #28a745;
+    background-color: #e6ffe6;
+}
+
+#downloadResult {
+    margin-top: 10px;
+    min-height: 20px;
+}

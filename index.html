@@ -45,8 +45,12 @@
         <div id="downloadSection" class="section">
             <input type="text" id="fileIdInput" placeholder="Enter File ID">
             <button onclick="downloadFile()">Download</button>
+            <p id="downloadResult" class="error-message"></p>
         </div>
     </div>
+
+    <!-- Add this div where you want to display the message -->
+    <div id="message" style="display: none;" class="message"></div>
 
     <!-- Loading Screen -->
     <div id="loadingScreen" class="loading-screen">
