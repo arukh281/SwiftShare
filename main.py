@@ -161,12 +161,13 @@ async def download(file_id: str):
         # If it's a text file, return content for preview
         if file_name == "shared-text.txt":
             content = file_stream.read().decode('utf-8')
-            # Delete the file as it's been accessed
-            try:
-                s3_client.delete_object(Bucket=S3_BUCKET_NAME, Key=file_data["key"])
-                del files_db[file_id]
-            except:
-                pass
+            # Only delete if expiration is within 5 minutes (delete_after_first_download policy)
+            if (file_data["expires_at"] - current_time) <= timedelta(seconds=300):
+                try:
+                    s3_client.delete_object(Bucket=S3_BUCKET_NAME, Key=file_data["key"])
+                    del files_db[file_id]
+                except:
+                    pass
             return JSONResponse(
                 content={
                     "type": "text",
@@ -175,7 +176,7 @@ async def download(file_id: str):
                 }
             )
 
-        # For non-text files, proceed with normal download
+        # For non-text files, check if it should be deleted after download
         if (file_data["expires_at"] - current_time) <= timedelta(seconds=300):
             try:
                 s3_client.delete_object(Bucket=S3_BUCKET_NAME, Key=file_data["key"])
