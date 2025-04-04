@@ -76,9 +76,10 @@ def upload_to_s3(file: UploadFile, expiration: int) -> dict:
 
 @app.post("/upload/")
 async def upload(
-    files: list[UploadFile] = File(default=[]),  # Changed from File(...)
+    files: list[UploadFile] = File(default=[]),
     expiration_policy: str = Form("delete_after_first_download"),
     text_content: str = Form(None),
+    password: str = Form(None),  # Add optional password parameter
 ):
     """Handle file uploads with expiration policies."""
     uploads = []
@@ -101,12 +102,20 @@ async def upload(
             filename="shared-text.txt",
             file=BytesIO(text_content.encode()),
         )
-        uploads.append(upload_to_s3(text_file, expiration))
+        result = upload_to_s3(text_file, expiration)
+        if password:
+            # Store password hash in files_db
+            files_db[result["file_id"]]["password"] = password
+        uploads.append(result)
 
     # Case 2: Single file, no text
     elif len(files) == 1 and files[0].filename and not text_content:
         file = files[0]
-        uploads.append(upload_to_s3(file, expiration))
+        result = upload_to_s3(file, expiration)
+        if password:
+            # Store password hash in files_db
+            files_db[result["file_id"]]["password"] = password
+        uploads.append(result)
 
     # Case 3 & 4: Multiple files or files with text
     elif len(files) > 0:
@@ -156,12 +165,14 @@ async def upload(
             "filename": "uploaded_files.zip",
             "expires_at": expiration_time,
         }
+        if password:
+            files_db[file_id]["password"] = password
         uploads.append({"file_id": file_id, "message": "ZIP file uploaded successfully!"})
 
     return {"uploads": uploads}
 
 @app.get("/download/{file_id}")
-async def download(file_id: str):
+async def download(file_id: str, password: str = None):
     """Download a file with proper decryption and content type handling."""
     try:
         print(f"Attempting to download file with ID: {file_id}")
@@ -188,6 +199,21 @@ async def download(file_id: str):
                 content={"error": "File has expired"},
                 headers={"Content-Type": "application/json"}
             )
+
+        # Check if password is required and validate it
+        if "password" in file_data:
+            if not password:
+                return JSONResponse(
+                    status_code=401,
+                    content={"error": "Password required for this file"},
+                    headers={"Content-Type": "application/json"}
+                )
+            if password != file_data["password"]:
+                return JSONResponse(
+                    status_code=403,
+                    content={"error": "Incorrect password"},
+                    headers={"Content-Type": "application/json"}
+                )
 
         print(f"Downloading file from S3 with key: {file_data['key']}")
         # Get file from S3
@@ -216,6 +242,7 @@ async def download(file_id: str):
             # Text content preview
             content = file_content.decode('utf-8')
             # Only delete if expiration is within 5 minutes (delete_after_first_download policy)
+            # and password validation was successful
             if (file_data["expires_at"] - current_time) <= timedelta(seconds=300):
                 try:
                     s3_manager.delete_file(file_data["key"])
@@ -239,6 +266,7 @@ async def download(file_id: str):
                 if len(file_list) == 1 and file_list[0] == "shared-text.txt":
                     # If only text file in ZIP, return its content
                     content = zipf.read(file_list[0]).decode('utf-8')
+                    # Only delete if expiration is within 5 minutes and password validation was successful
                     if (file_data["expires_at"] - current_time) <= timedelta(seconds=300):
                         try:
                             s3_manager.delete_file(file_data["key"])
@@ -251,6 +279,7 @@ async def download(file_id: str):
                     )
                 else:
                     # Return ZIP file for download
+                    # Only delete if expiration is within 5 minutes and password validation was successful
                     if (file_data["expires_at"] - current_time) <= timedelta(seconds=300):
                         try:
                             s3_manager.delete_file(file_data["key"])
@@ -268,6 +297,7 @@ async def download(file_id: str):
         else:
             # Handle regular file download
             content_type = metadata.get("content_type", "application/octet-stream")
+            # Only delete if expiration is within 5 minutes and password validation was successful
             if (file_data["expires_at"] - current_time) <= timedelta(seconds=300):
                 try:
                     s3_manager.delete_file(file_data["key"])

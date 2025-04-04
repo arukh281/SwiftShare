@@ -102,6 +102,7 @@ fileInput.addEventListener("change", function () {
 async function uploadFiles() {
   const textInput = document.getElementById("textInput").value.trim();
   const expirationPolicy = document.getElementById("expirationPolicy").value;
+  const uploadPassword = document.getElementById("uploadPassword").value.trim();
   const uploadResult = document.getElementById("uploadResult");
 
   try {
@@ -112,6 +113,11 @@ async function uploadFiles() {
 
     if (textInput) {
       formData.append("text_content", textInput);
+    }
+
+    // Add password if provided
+    if (uploadPassword) {
+      formData.append("password", uploadPassword);
     }
 
     // Add files if present
@@ -140,7 +146,11 @@ async function uploadFiles() {
 
     if (data.uploads && data.uploads.length > 0) {
       const fileId = data.uploads[0].file_id;
-      uploadResult.textContent = `Upload successful! Your file ID is: ${fileId}`;
+      let message = `Upload successful! Your file ID is: ${fileId}`;
+      if (uploadPassword) {
+        message += "<br>Remember to share the password with the recipient!";
+      }
+      uploadResult.innerHTML = message;
     }
   } catch (error) {
     uploadResult.textContent = "Error uploading: " + error.message;
@@ -186,6 +196,9 @@ function downloadTextFile() {
 
 async function downloadFile() {
   const fileId = document.getElementById("fileIdInput").value.trim();
+  const downloadPassword = document
+    .getElementById("downloadPassword")
+    .value.trim();
   const downloadResult = document.getElementById("downloadResult");
 
   if (!fileId) {
@@ -195,11 +208,23 @@ async function downloadFile() {
 
   try {
     downloadResult.textContent = "Downloading...";
-    const response = await fetch(`/download/${fileId}`);
+    const response = await fetch(
+      `/download/${fileId}${
+        downloadPassword
+          ? `?password=${encodeURIComponent(downloadPassword)}`
+          : ""
+      }`
+    );
 
     if (!response.ok) {
       const data = await response.json();
-      downloadResult.textContent = data.error || "Error downloading file";
+      if (response.status === 401) {
+        downloadResult.textContent = "This file requires a password";
+      } else if (response.status === 403) {
+        downloadResult.textContent = "Incorrect password";
+      } else {
+        downloadResult.textContent = data.error || "Error downloading file";
+      }
       return;
     }
 
