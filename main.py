@@ -26,14 +26,23 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # In-memory database for file metadata
 files_db = {}
 
-def generate_id(prefix: str = "", length: int = 4) -> str:
-    """Generate a unique ID with a prefix and a random string."""
-    random_part = ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
-    return f"{prefix}{random_part}"
+def generate_id(length: int = 4) -> str:
+    """Generate a unique ID with a pattern of 3 numbers and 1 letter."""
+    # Define the pattern: N-N-N-L (Number-Number-Number-Letter)
+    pattern = ['N', 'N', 'N', 'L']
+    
+    result = []
+    for char in pattern:
+        if char == 'N':
+            result.append(random.choice(string.digits))
+        else:  # 'L'
+            result.append(random.choice(string.ascii_uppercase))
+    
+    return ''.join(result)
 
 def upload_to_s3(file: UploadFile, expiration: int) -> dict:
     """Upload a file to S3 and return its metadata."""
-    file_id = generate_id(prefix="S3-", length=6)
+    file_id = generate_id(length=6)
     file_key = f"{file_id}/{file.filename}"
 
     # Read file content
@@ -118,7 +127,7 @@ async def upload(
         zip_buffer.seek(0)
 
         # Upload the ZIP file to S3
-        file_id = generate_id(prefix="ZIP-", length=6)
+        file_id = generate_id(length=6)
         zip_file_key = f"{file_id}/uploaded_files.zip"
         
         # Get ZIP content
