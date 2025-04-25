@@ -37,6 +37,12 @@
                 <option value="store_1_day">Store for 1 Day</option>
             </select>
 
+            <!-- Password Input for Upload -->
+            <div class="password-input">
+                <label for="uploadPassword">Password Protection (Optional)</label>
+                <input type="password" id="uploadPassword" placeholder="Enter a password to protect your file">
+            </div>
+
             <button onclick="uploadFiles()">Upload</button>
             <p id="uploadResult"></p>
         </div>
@@ -44,6 +50,11 @@
         <!-- Download Section -->
         <div id="downloadSection" class="section">
             <input type="text" id="fileIdInput" placeholder="Enter File ID">
+            <!-- Password Input for Download -->
+            <div class="password-input">
+                <label for="downloadPassword">Password (if required)</label>
+                <input type="password" id="downloadPassword" placeholder="Enter the file's password">
+            </div>
             <button onclick="downloadFile()">Download</button>
             <p id="downloadResult" class="error-message"></p>
         </div>
